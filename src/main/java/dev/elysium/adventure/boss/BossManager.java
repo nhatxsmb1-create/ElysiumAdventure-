@@ -136,7 +136,9 @@ public class BossManager {
             // Dung MythicMobs chi de spawn entity
             try {
                 var mythicMob = MythicBukkit.inst().getMobManager()
-                        .spawnMob(data.getMythicMobId(), loc, 1);
+                        .spawnMob(data.getMythicMobId(),
+                                io.lumine.mythic.bukkit.BukkitAdapter.adapt(loc),
+                                io.lumine.mythic.api.mobs.entities.SpawnReason.PLUGIN, 1);
                 entity = (LivingEntity) mythicMob.getEntity().getBukkitEntity();
             } catch (Exception e) {
                 plugin.getLogger().warning("Khong spawn duoc MythicMob: " + data.getMythicMobId()
