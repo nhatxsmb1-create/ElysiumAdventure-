@@ -135,10 +135,24 @@ public class BossManager {
                 && !data.getMythicMobId().isEmpty()) {
             // Dung MythicMobs chi de spawn entity
             try {
-                var mythicMob = MythicBukkit.inst().getMobManager()
-                        .spawnMob(data.getMythicMobId(),
-                                io.lumine.mythic.bukkit.BukkitAdapter.adapt(loc),
-                                io.lumine.mythic.api.mobs.entities.SpawnReason.PLUGIN, 1);
+                var mobMgr = MythicBukkit.inst().getMobManager();
+                var adaptedLoc = io.lumine.mythic.bukkit.BukkitAdapter.adapt(loc);
+                Object mythicMobRaw = null;
+                for (java.lang.reflect.Method m : mobMgr.getClass().getMethods()) {
+                    if (!m.getName().equals("spawnMob")) continue;
+                    if (m.getParameterCount() == 4) {
+                        Class<?> srClass = Class.forName("io.lumine.mythic.api.mobs.entities.SpawnReason");
+                        Object sr = srClass.getEnumConstants()[0];
+                        for (Object e : srClass.getEnumConstants()) {
+                            if (e.toString().contains("PLUGIN") || e.toString().contains("OTHER")) { sr = e; break; }
+                        }
+                        mythicMobRaw = m.invoke(mobMgr, data.getMythicMobId(), adaptedLoc, sr, 1);
+                    } else if (m.getParameterCount() == 2) {
+                        mythicMobRaw = m.invoke(mobMgr, data.getMythicMobId(), adaptedLoc);
+                    }
+                    break;
+                }
+                var mythicMob = (io.lumine.mythic.api.mobs.ActiveMob) mythicMobRaw;
                 entity = (LivingEntity) mythicMob.getEntity().getBukkitEntity();
             } catch (Exception e) {
                 plugin.getLogger().warning("Khong spawn duoc MythicMob: " + data.getMythicMobId()
