@@ -1,0 +1,40 @@
+name: ElysiumAdventure
+version: 1.0.0
+main: dev.elysium.adventure.ElysiumAdventure
+api-version: '1.21'
+authors:
+  - Elysium
+description: Adventure system - Dungeon, Boss, Raid, Party
+
+depend:
+  - ElysiumCore
+softdepend:
+  - MythicMobs
+
+commands:
+  adventure:
+    description: ElysiumAdventure main command
+    aliases: [adv]
+    usage: /adventure <help>
+    permission: elysium.adventure.use
+  party:
+    description: Party system
+    aliases: [p]
+    usage: /party <invite|leave|info|kick|disband>
+    permission: elysium.adventure.use
+  dungeon:
+    description: Dungeon system
+    aliases: [dg]
+    usage: /dungeon <enter|leave|list|info>
+    permission: elysium.adventure.use
+  boss:
+    description: Boss admin command
+    aliases: [bossadmin]
+    usage: /boss <spawn|kill|list>
+    permission: elysium.adventure.admin
+
+permissions:
+  elysium.adventure.use:
+    default: true
+  elysium.adventure.admin:
+    default: op
