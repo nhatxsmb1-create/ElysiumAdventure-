@@ -112,12 +112,25 @@ public class BossSkillExecutor {
             return;
         }
         try {
-            io.lumine.mythic.bukkit.MythicBukkit.inst()
-                    .getMobManager()
-                    .spawnMob(skill.getMythicMobId(),
-                            io.lumine.mythic.bukkit.BukkitAdapter.adapt(loc),
-                            io.lumine.mythic.api.mobs.entities.SpawnReason.PLUGIN,
-                            skill.getCount());
+            var mobManager = io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager();
+            var adaptedLoc = io.lumine.mythic.bukkit.BukkitAdapter.adapt(loc);
+            // Reflection de tranh compile-time phu thuoc SpawnReason enum
+            java.lang.reflect.Method spawnMethod = null;
+            for (java.lang.reflect.Method m : mobManager.getClass().getMethods()) {
+                if (m.getName().equals("spawnMob")) { spawnMethod = m; break; }
+            }
+            if (spawnMethod != null) {
+                if (spawnMethod.getParameterCount() == 4) {
+                    Class<?> srClass = Class.forName("io.lumine.mythic.api.mobs.entities.SpawnReason");
+                    Object sr = srClass.getEnumConstants()[0];
+                    for (Object e : srClass.getEnumConstants()) {
+                        if (e.toString().contains("PLUGIN") || e.toString().contains("OTHER")) { sr = e; break; }
+                    }
+                    spawnMethod.invoke(mobManager, skill.getMythicMobId(), adaptedLoc, sr, skill.getCount());
+                } else {
+                    spawnMethod.invoke(mobManager, skill.getMythicMobId(), adaptedLoc);
+                }
+            }
         } catch (Exception e) {
             plugin.getLogger().warning("Khong the spawn mythic mob: " + skill.getMythicMobId());
         }
