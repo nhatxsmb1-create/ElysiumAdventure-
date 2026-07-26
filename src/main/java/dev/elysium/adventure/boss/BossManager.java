@@ -152,8 +152,13 @@ public class BossManager {
                     }
                     break;
                 }
-                var mythicMob = (io.lumine.mythic.api.mobs.ActiveMob) mythicMobRaw;
-                entity = (LivingEntity) mythicMob.getEntity().getBukkitEntity();
+                // Dung reflection de lay getBukkitEntity, tranh compile-time cast
+                if (mythicMobRaw != null) {
+                    Object abstractEntity = mythicMobRaw.getClass().getMethod("getEntity").invoke(mythicMobRaw);
+                    entity = (LivingEntity) abstractEntity.getClass().getMethod("getBukkitEntity").invoke(abstractEntity);
+                } else {
+                    throw new Exception("spawnMob returned null");
+                }
             } catch (Exception e) {
                 plugin.getLogger().warning("Khong spawn duoc MythicMob: " + data.getMythicMobId()
                         + " — spawn Wither Skeleton thay the.");
