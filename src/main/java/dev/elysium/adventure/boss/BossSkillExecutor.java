@@ -116,7 +116,8 @@ public class BossSkillExecutor {
                     .getMobManager()
                     .spawnMob(skill.getMythicMobId(),
                             io.lumine.mythic.bukkit.BukkitAdapter.adapt(loc),
-                            1, skill.getCount());
+                            io.lumine.mythic.api.mobs.entities.SpawnReason.PLUGIN,
+                            skill.getCount());
         } catch (Exception e) {
             plugin.getLogger().warning("Khong the spawn mythic mob: " + skill.getMythicMobId());
         }
