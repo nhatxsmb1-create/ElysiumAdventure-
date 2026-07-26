@@ -87,10 +87,13 @@ public class BossManager {
 
                 List<BossData.Phase> phases = new ArrayList<>();
                 List<Map<?, ?>> phaseList = b.getMapList("phases");
-                for (Map<?, ?> pm : phaseList) {
-                    int           threshold = (int) pm.getOrDefault("threshold", 100);
-                    String        name      = (String) pm.getOrDefault("name", "Phase");
-                    List<String>  skills    = (List<String>) pm.getOrDefault("skills", List.of());
+                for (Map<?, ?> rawPm : phaseList) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> pm = (Map<String, Object>) rawPm;
+                    int           threshold = pm.containsKey("threshold") ? ((Number) pm.get("threshold")).intValue() : 100;
+                    String        name      = pm.containsKey("name") ? (String) pm.get("name") : "Phase";
+                    @SuppressWarnings("unchecked")
+                    List<String>  skills    = pm.containsKey("skills") ? (List<String>) pm.get("skills") : new java.util.ArrayList<>();
                     double        speed     = pm.containsKey("speed") ?
                             ((Number) pm.get("speed")).doubleValue() : 0.3;
                     String        announce  = (String) pm.get("announce");
