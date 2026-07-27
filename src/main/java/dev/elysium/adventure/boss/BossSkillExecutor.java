@@ -8,8 +8,6 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
-import java.util.List;
-
 public class BossSkillExecutor {
 
     private final ElysiumAdventure plugin;
@@ -32,33 +30,25 @@ public class BossSkillExecutor {
         }
     }
 
-    // ── Cone Damage ───────────────────────────────────────────────────────────
-
     private void executeCone(LivingEntity boss, BossSkillData skill) {
-        Location loc   = boss.getLocation();
+        Location loc    = boss.getLocation();
         Vector   facing = loc.getDirection().normalize();
 
         for (Entity nearby : boss.getNearbyEntities(skill.getRange(), 4, skill.getRange())) {
             if (!(nearby instanceof Player target)) continue;
             Vector toTarget = target.getLocation().subtract(loc).toVector().normalize();
             double angle = Math.toDegrees(Math.acos(Math.max(-1, Math.min(1, facing.dot(toTarget)))));
-
             if (angle <= skill.getAngle() / 2.0) {
                 target.damage(skill.getDamage(), boss);
-                spawnParticles(loc.getWorld(), skill.getParticle(),
-                        target.getLocation().add(0, 1, 0), 10, 0.3);
+                spawnParticles(loc.getWorld(), skill.getParticle(), target.getLocation().add(0,1,0), 10, 0.3);
             }
         }
-        // Hieu ung
-        spawnParticles(loc.getWorld(), skill.getParticle(), loc.clone().add(0, 1, 0), 30, 1.5);
+        spawnParticles(loc.getWorld(), skill.getParticle(), loc.clone().add(0,1,0), 30, 1.5);
         loc.getWorld().playSound(loc, Sound.ENTITY_BLAZE_SHOOT, 1.5f, 0.8f);
     }
 
-    // ── AOE Damage ────────────────────────────────────────────────────────────
-
     private void executeAoe(LivingEntity boss, BossSkillData skill) {
         Location loc = boss.getLocation();
-
         for (Entity nearby : boss.getNearbyEntities(skill.getRange(), 4, skill.getRange())) {
             if (!(nearby instanceof Player target)) continue;
             target.damage(skill.getDamage(), boss);
@@ -69,79 +59,55 @@ public class BossSkillExecutor {
                 target.setVelocity(kb);
             }
         }
-        spawnParticles(loc.getWorld(), skill.getParticle(), loc.clone().add(0, 0.5, 0),
-                50, skill.getRange() * 0.5);
+        spawnParticles(loc.getWorld(), skill.getParticle(), loc.clone().add(0,0.5,0), 50, skill.getRange() * 0.5);
         loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 1f, 1f);
     }
 
-    // ── Projectile ────────────────────────────────────────────────────────────
-
     private void executeProjectile(LivingEntity boss, BossSkillData skill) {
-        // Lay player gan nhat lam muc tieu
         Player target = getNearestPlayer(boss, 30);
         if (target == null) return;
 
         Location from = boss.getEyeLocation();
         Vector   dir  = target.getEyeLocation().subtract(from).toVector().normalize();
 
-        // Dung SmallFireball de dai dien projectile
         Fireball fb = boss.getWorld().spawn(from, Fireball.class);
         fb.setDirection(dir.multiply(1.5));
         fb.setShooter(boss);
         fb.setIsIncendiary(false);
         fb.setYield(0f);
 
-        // Tag damage tuy chinh
         fb.getPersistentDataContainer().set(
                 new org.bukkit.NamespacedKey(plugin, "boss_projectile_damage"),
                 org.bukkit.persistence.PersistentDataType.DOUBLE,
                 skill.getDamage()
         );
-
         spawnParticles(from.getWorld(), skill.getParticle(), from, 5, 0.2);
         boss.getWorld().playSound(from, Sound.ENTITY_BLAZE_SHOOT, 1f, 1.2f);
     }
 
-    // ── Summon ────────────────────────────────────────────────────────────────
-
     private void executeSummon(LivingEntity boss, BossSkillData skill) {
         Location loc = boss.getLocation();
-        // Kiem tra MythicMobs co san khong
         if (!Bukkit.getPluginManager().isPluginEnabled("MythicMobs")) {
             plugin.getLogger().warning("MythicMobs chua bat, bo qua skill SUMMON: " + skill.getId());
             return;
         }
         try {
-            var mobManager = io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager();
-            var adaptedLoc = io.lumine.mythic.bukkit.BukkitAdapter.adapt(loc);
-            // Reflection de tranh compile-time phu thuoc SpawnReason enum
-            java.lang.reflect.Method spawnMethod = null;
-            for (java.lang.reflect.Method m : mobManager.getClass().getMethods()) {
-                if (m.getName().equals("spawnMob")) { spawnMethod = m; break; }
-            }
-            if (spawnMethod != null) {
-                if (spawnMethod.getParameterCount() == 4) {
-                    Class<?> srClass = Class.forName("io.lumine.mythic.api.mobs.entities.SpawnReason");
-                    Object sr = srClass.getEnumConstants()[0];
-                    for (Object e : srClass.getEnumConstants()) {
-                        if (e.toString().contains("PLUGIN") || e.toString().contains("OTHER")) { sr = e; break; }
-                    }
-                    spawnMethod.invoke(mobManager, skill.getMythicMobId(), adaptedLoc, sr, skill.getCount());
-                } else {
-                    spawnMethod.invoke(mobManager, skill.getMythicMobId(), adaptedLoc);
-                }
-            }
+            // Dung BukkitAdapter de chuyen Location sang AbstractLocation
+            io.lumine.mythic.bukkit.BukkitAdapter adapter = io.lumine.mythic.bukkit.BukkitAdapter.INSTANCE;
+            io.lumine.mythic.api.adapters.AbstractLocation abstractLoc = adapter.adapt(loc);
+
+            io.lumine.mythic.bukkit.MythicBukkit.inst()
+                    .getMobManager()
+                    .spawnMob(skill.getMythicMobId(), abstractLoc, skill.getCount());
         } catch (Exception e) {
-            plugin.getLogger().warning("Khong the spawn mythic mob: " + skill.getMythicMobId());
+            plugin.getLogger().warning("Khong the spawn mythic mob: " + skill.getMythicMobId() + " - " + e.getMessage());
         }
-        spawnParticles(loc.getWorld(), Particle.PORTAL, loc.clone().add(0, 1, 0), 40, 1.0);
+        spawnParticles(loc.getWorld(), Particle.PORTAL, loc.clone().add(0,1,0), 40, 1.0);
         loc.getWorld().playSound(loc, Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 0.5f);
     }
 
-    // ── Debuff ────────────────────────────────────────────────────────────────
-
     private void executeDebuff(LivingEntity boss, BossSkillData skill) {
-        Location loc = boss.getLocation();
+        Location loc  = boss.getLocation();
         PotionEffectType type = PotionEffectType.getByName(skill.getPotionType());
         if (type == null) return;
 
@@ -149,12 +115,9 @@ public class BossSkillExecutor {
             if (!(nearby instanceof Player target)) continue;
             target.addPotionEffect(new PotionEffect(type, skill.getDuration(), skill.getAmplifier()));
         }
-        spawnParticles(loc.getWorld(), skill.getParticle(), loc.clone().add(0, 1, 0),
-                30, skill.getRange() * 0.4);
+        spawnParticles(loc.getWorld(), skill.getParticle(), loc.clone().add(0,1,0), 30, skill.getRange() * 0.4);
         loc.getWorld().playSound(loc, Sound.ENTITY_WITCH_THROW, 1f, 0.8f);
     }
-
-    // ── Meteor Rain ───────────────────────────────────────────────────────────
 
     private void executeMeteor(LivingEntity boss, BossSkillData skill) {
         Location center = boss.getLocation();
@@ -163,33 +126,23 @@ public class BossSkillExecutor {
         double   radius = skill.getMeteorRadius();
 
         for (int i = 0; i < count; i++) {
-            final int delay = i * 10; // Moi meteor cach nhau 0.5 giay
+            final int delay = i * 10;
             new BukkitRunnable() {
-                @Override
-                public void run() {
+                @Override public void run() {
                     if (!boss.isValid()) return;
-                    // Random vi tri trong ban kinh
-                    double angle  = Math.random() * Math.PI * 2;
-                    double dist   = Math.random() * radius;
-                    double x = center.getX() + Math.cos(angle) * dist;
-                    double z = center.getZ() + Math.sin(angle) * dist;
-                    double y = center.getY() + 15;
+                    double angle = Math.random() * Math.PI * 2;
+                    double dist  = Math.random() * radius;
+                    double x     = center.getX() + Math.cos(angle) * dist;
+                    double z     = center.getZ() + Math.sin(angle) * dist;
 
                     Location impact = new Location(world, x, center.getY(), z);
-                    Location spawn  = new Location(world, x, y, z);
+                    world.spawnParticle(Particle.LAVA, impact.clone().add(0,0.1,0), 15, 0.5, 0, 0.5, 0);
 
-                    // Warn vong tron
-                    world.spawnParticle(Particle.LAVA, impact.clone().add(0, 0.1, 0), 15, 0.5, 0, 0.5, 0);
-
-                    // Sau 1.5 giay meteor roi xuong
                     new BukkitRunnable() {
-                        @Override
-                        public void run() {
+                        @Override public void run() {
                             world.createExplosion(impact, 0f, false, false);
                             world.spawnParticle(Particle.EXPLOSION, impact, 5, 0.5, 0.5, 0.5, 0);
                             world.playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 0.6f);
-
-                            // Damage player trong vung
                             for (Entity e : impact.getWorld().getNearbyEntities(impact, 3, 3, 3)) {
                                 if (e instanceof Player p) p.damage(skill.getDamage(), boss);
                             }
@@ -199,8 +152,6 @@ public class BossSkillExecutor {
             }.runTaskLater(plugin, delay);
         }
     }
-
-    // ── Utils ─────────────────────────────────────────────────────────────────
 
     private Player getNearestPlayer(LivingEntity boss, double range) {
         Player nearest = null;
@@ -213,9 +164,8 @@ public class BossSkillExecutor {
         return nearest;
     }
 
-    private void spawnParticles(World world, Particle type, Location loc,
-                                int count, double spread) {
+    private void spawnParticles(World world, Particle type, Location loc, int count, double spread) {
         if (world == null) return;
         world.spawnParticle(type, loc, count, spread, spread, spread, 0);
     }
-}
+            }
