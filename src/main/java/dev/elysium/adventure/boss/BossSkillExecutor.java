@@ -92,9 +92,9 @@ public class BossSkillExecutor {
             return;
         }
         try {
-            // Dung BukkitAdapter de chuyen Location sang AbstractLocation
-            io.lumine.mythic.bukkit.BukkitAdapter adapter = io.lumine.mythic.bukkit.BukkitAdapter.INSTANCE;
-            io.lumine.mythic.api.adapters.AbstractLocation abstractLoc = adapter.adapt(loc);
+            // MythicMobs 5.x: dung BukkitAdapter.adapt() truc tiep (static method)
+            io.lumine.mythic.api.adapters.AbstractLocation abstractLoc =
+                    io.lumine.mythic.bukkit.BukkitAdapter.adapt(loc);
 
             io.lumine.mythic.bukkit.MythicBukkit.inst()
                     .getMobManager()
@@ -168,4 +168,4 @@ public class BossSkillExecutor {
         if (world == null) return;
         world.spawnParticle(type, loc, count, spread, spread, spread, 0);
     }
-            }
+}
