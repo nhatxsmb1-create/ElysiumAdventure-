@@ -90,7 +90,8 @@ public class BossManager {
                 for (Map<?, ?> pm : phaseList) {
                     int           threshold = (int) pm.getOrDefault("threshold", 100);
                     String        name      = (String) pm.getOrDefault("name", "Phase");
-                    List<String>  skills    = (List<String>) pm.getOrDefault("skills", List.of());
+                    @SuppressWarnings("unchecked")
+                    List<String>  skills    = (List<String>) pm.getOrDefault("skills", new java.util.ArrayList<String>());
                     double        speed     = pm.containsKey("speed") ?
                             ((Number) pm.get("speed")).doubleValue() : 0.3;
                     String        announce  = (String) pm.get("announce");
@@ -103,7 +104,7 @@ public class BossManager {
                 BossData.BossReward reward = new BossData.BossReward(
                         rSec != null ? rSec.getInt("exp", 0)   : 0,
                         rSec != null ? rSec.getInt("money", 0) : 0,
-                        rSec != null ? rSec.getStringList("commands") : List.of()
+                        rSec != null ? rSec.getStringList("commands") : new java.util.ArrayList<>()
                 );
 
                 bossDataMap.put(bossId, new BossData(
@@ -293,4 +294,4 @@ public class BossManager {
     private String formatLoc(Location l) {
         return String.format("%.0f, %.0f, %.0f", l.getX(), l.getY(), l.getZ());
     }
-}
+        }
