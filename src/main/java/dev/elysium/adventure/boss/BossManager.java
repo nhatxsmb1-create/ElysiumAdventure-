@@ -87,13 +87,10 @@ public class BossManager {
 
                 List<BossData.Phase> phases = new ArrayList<>();
                 List<Map<?, ?>> phaseList = b.getMapList("phases");
-                for (Map<?, ?> rawPm : phaseList) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> pm = (Map<String, Object>) rawPm;
-                    int           threshold = pm.containsKey("threshold") ? ((Number) pm.get("threshold")).intValue() : 100;
-                    String        name      = pm.containsKey("name") ? (String) pm.get("name") : "Phase";
-                    @SuppressWarnings("unchecked")
-                    List<String>  skills    = pm.containsKey("skills") ? (List<String>) pm.get("skills") : new java.util.ArrayList<>();
+                for (Map<?, ?> pm : phaseList) {
+                    int           threshold = (int) pm.getOrDefault("threshold", 100);
+                    String        name      = (String) pm.getOrDefault("name", "Phase");
+                    List<String>  skills    = (List<String>) pm.getOrDefault("skills", List.of());
                     double        speed     = pm.containsKey("speed") ?
                             ((Number) pm.get("speed")).doubleValue() : 0.3;
                     String        announce  = (String) pm.get("announce");
@@ -138,30 +135,9 @@ public class BossManager {
                 && !data.getMythicMobId().isEmpty()) {
             // Dung MythicMobs chi de spawn entity
             try {
-                var mobMgr = MythicBukkit.inst().getMobManager();
-                var adaptedLoc = io.lumine.mythic.bukkit.BukkitAdapter.adapt(loc);
-                Object mythicMobRaw = null;
-                for (java.lang.reflect.Method m : mobMgr.getClass().getMethods()) {
-                    if (!m.getName().equals("spawnMob")) continue;
-                    if (m.getParameterCount() == 4) {
-                        Class<?> srClass = Class.forName("io.lumine.mythic.api.mobs.entities.SpawnReason");
-                        Object sr = srClass.getEnumConstants()[0];
-                        for (Object e : srClass.getEnumConstants()) {
-                            if (e.toString().contains("PLUGIN") || e.toString().contains("OTHER")) { sr = e; break; }
-                        }
-                        mythicMobRaw = m.invoke(mobMgr, data.getMythicMobId(), adaptedLoc, sr, 1);
-                    } else if (m.getParameterCount() == 2) {
-                        mythicMobRaw = m.invoke(mobMgr, data.getMythicMobId(), adaptedLoc);
-                    }
-                    break;
-                }
-                // Dung reflection de lay getBukkitEntity, tranh compile-time cast
-                if (mythicMobRaw != null) {
-                    Object abstractEntity = mythicMobRaw.getClass().getMethod("getEntity").invoke(mythicMobRaw);
-                    entity = (LivingEntity) abstractEntity.getClass().getMethod("getBukkitEntity").invoke(abstractEntity);
-                } else {
-                    throw new Exception("spawnMob returned null");
-                }
+                var mythicMob = MythicBukkit.inst().getMobManager()
+                        .spawnMob(data.getMythicMobId(), loc, 1);
+                entity = (LivingEntity) mythicMob.getEntity().getBukkitEntity();
             } catch (Exception e) {
                 plugin.getLogger().warning("Khong spawn duoc MythicMob: " + data.getMythicMobId()
                         + " — spawn Wither Skeleton thay the.");
@@ -237,15 +213,11 @@ public class BossManager {
     private void giveReward(Player player, BossData.BossReward reward) {
         // Exp qua CoreAPI
         try {
-            dev.elysium.core.api.CoreAPI.getPlayer(player).addExp(reward.getExp());
+            dev.elysium.core.api.CoreAPI.addExp(player, reward.getExp());
         } catch (Exception ignored) {}
 
-        // Money qua Vault
-        try {
-            var eco = Bukkit.getServicesManager()
-                    .getRegistration(net.milkbowl.vault.economy.Economy.class);
-            if (eco != null) eco.getProvider().depositPlayer(player, reward.getMoney());
-        } catch (Exception ignored) {}
+        // Money qua CoreAPI (Vault first, fallback internal)
+        dev.elysium.core.api.CoreAPI.addBalance(player, reward.getMoney());
 
         // Commands
         for (String cmd : reward.getCommands()) {
