@@ -43,18 +43,18 @@
             <version>1.0.0</version>
             <scope>provided</scope>
         </dependency>
-        <!-- Vault API -->
-        <dependency>
-            <groupId>com.github.MilkBowl</groupId>
-            <artifactId>VaultAPI</artifactId>
-            <version>1.7</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- MythicMobs chi dung de spawn entity, khong dung logic -->
+        <!-- MythicMobs chi dung de spawn entity -->
         <dependency>
             <groupId>io.lumine</groupId>
             <artifactId>Mythic-Dist</artifactId>
             <version>5.6.1</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- Vault -->
+        <dependency>
+            <groupId>com.github.MilkBowl</groupId>
+            <artifactId>VaultAPI</artifactId>
+            <version>1.7.1</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
@@ -70,3 +70,4 @@
         </plugins>
     </build>
 </project>
+                     
