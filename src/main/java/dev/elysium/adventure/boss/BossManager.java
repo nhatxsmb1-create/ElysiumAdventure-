@@ -87,14 +87,21 @@ public class BossManager {
 
                 List<BossData.Phase> phases = new ArrayList<>();
                 List<Map<?, ?>> phaseList = b.getMapList("phases");
-                for (Map<?, ?> pm : phaseList) {
-                    int           threshold = (int) pm.getOrDefault("threshold", 100);
-                    String        name      = (String) pm.getOrDefault("name", "Phase");
+                for (Map<?, ?> rawMap : phaseList) {
+                    // Cast sang Map<String, Object> de tranh generic capture error
                     @SuppressWarnings("unchecked")
-                    List<String>  skills    = (List<String>) pm.getOrDefault("skills", new java.util.ArrayList<String>());
-                    double        speed     = pm.containsKey("speed") ?
-                            ((Number) pm.get("speed")).doubleValue() : 0.3;
-                    String        announce  = (String) pm.get("announce");
+                    Map<String, Object> pm = (Map<String, Object>) rawMap;
+
+                    int    threshold = pm.containsKey("threshold") ? ((Number) pm.get("threshold")).intValue() : 100;
+                    String name      = pm.containsKey("name")      ? (String) pm.get("name") : "Phase";
+                    double speed     = pm.containsKey("speed")     ? ((Number) pm.get("speed")).doubleValue() : 0.3;
+                    String announce  = pm.containsKey("announce")  ? (String) pm.get("announce") : null;
+
+                    @SuppressWarnings("unchecked")
+                    List<String> skills = pm.containsKey("skills")
+                            ? (List<String>) pm.get("skills")
+                            : new ArrayList<>();
+
                     phases.add(new BossData.Phase(threshold, name, skills, speed, announce));
                 }
                 // Sort giam dan theo threshold
@@ -294,4 +301,4 @@ public class BossManager {
     private String formatLoc(Location l) {
         return String.format("%.0f, %.0f, %.0f", l.getX(), l.getY(), l.getZ());
     }
-}
+    }
