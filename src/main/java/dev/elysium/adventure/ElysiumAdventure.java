@@ -8,6 +8,7 @@ import dev.elysium.adventure.command.DungeonCommand;
 import dev.elysium.adventure.command.PartyCommand;
 import dev.elysium.adventure.config.AdventureConfig;
 import dev.elysium.adventure.dungeon.DungeonManager;
+import dev.elysium.adventure.gui.GuiListener;
 import dev.elysium.adventure.listener.BossListener;
 import dev.elysium.adventure.listener.DungeonListener;
 import dev.elysium.adventure.listener.PartyListener;
@@ -48,6 +49,7 @@ public class ElysiumAdventure extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PartyListener(this), this);
         getServer().getPluginManager().registerEvents(new BossListener(this), this);
         getServer().getPluginManager().registerEvents(new DungeonListener(this), this);
+        getServer().getPluginManager().registerEvents(new GuiListener(), this);
 
         getLogger().info("=== ElysiumAdventure v" + getDescription().getVersion() + " enabled! ===");
         getLogger().info("Bosses: " + bossManager.getBossCount()
@@ -63,7 +65,7 @@ public class ElysiumAdventure extends JavaPlugin {
 
     public static ElysiumAdventure getInstance() { return instance; }
     public AdventureConfig getAdventureConfig()  { return adventureConfig; }
-    public PartyManager    getPartyManager()      { return partyManager; }
-    public BossManager     getBossManager()        { return bossManager; }
-    public DungeonManager  getDungeonManager()     { return dungeonManager; }
+    public PartyManager    getPartyManager()     { return partyManager; }
+    public BossManager     getBossManager()      { return bossManager; }
+    public DungeonManager  getDungeonManager()   { return dungeonManager; }
 }

@@ -1,27 +1,24 @@
-# Dinh nghia Boss
-# mythicmob-id: ten mob trong MythicMobs (chi dung de spawn)
-# ElysiumAdventure tu quan ly toan bo phase, skill, reward
-
 bosses:
   DRAGON_LORD:
     display-name: "&4&l🐉 Rồng Chúa"
-    mythicmob-id: "ElysiumDragon"      # Ten mob trong MythicMobs
+    mythicmob-id: "ElysiumDragon"
     max-hp: 5000
+    loot: "DRAGON_EGG:1-1:0.1,DIAMOND:3-8:0.8,GOLD_INGOT:5-15:1.0,EXPERIENCE_BOTTLE:10-20:1.0"
     phases:
-      - threshold: 100   # 100% HP -> Phase 1
+      - threshold: 100
         name: "Binh Thuong"
         skills: [FIRE_BREATH, WING_SLAM]
         speed: 0.3
-      - threshold: 60    # 60% HP -> Phase 2
+      - threshold: 60
         name: "Cuong No"
         skills: [FIRE_BREATH, WING_SLAM, SUMMON_MINION]
         speed: 0.5
         announce: "&c&l☠ Rồng Chúa vào giai đoạn CUỒNG NỘ!"
-      - threshold: 30    # 30% HP -> Phase 3
+      - threshold: 30
         name: "Tan Diet"
         skills: [FIRE_BREATH, METEOR_RAIN, SUMMON_MINION]
         speed: 0.7
-        announce: "&4&l💀 Rồng Chúa sắp TAN DIỆT — hãy cẩn thận!"
+        announce: "&4&l💀 Rồng Chúa sắp TAN DIỆT!"
     rewards:
       exp: 5000
       money: 10000
@@ -32,6 +29,7 @@ bosses:
     display-name: "&b&l❄ Băng Vương"
     mythicmob-id: "ElysiumFrostKing"
     max-hp: 3000
+    loot: "DIAMOND:2-5:0.7,IRON_INGOT:5-10:1.0,SNOWBALL:10-20:1.0"
     phases:
       - threshold: 100
         name: "Lanh Gia"
@@ -47,11 +45,10 @@ bosses:
       money: 6000
       commands: []
 
-# Dinh nghia Skill Boss
 skills:
   FIRE_BREATH:
     name: "Hơi Thở Lửa"
-    type: CONE_DAMAGE        # CONE_DAMAGE | AOE_DAMAGE | PROJECTILE | SUMMON | DEBUFF | METEOR
+    type: CONE_DAMAGE
     damage: 15.0
     range: 8.0
     angle: 60.0
@@ -89,16 +86,17 @@ skills:
     damage: 12.0
     cooldown: 4
     particle: SNOWFLAKE
-    slow-duration: 40
-    slow-amplifier: 1
+    potion-type: SLOWNESS
+    duration: 40
+    potion-amplifier: 1
 
   FREEZE_AURA:
     name: "Hào Quang Băng"
     type: DEBUFF
     range: 6.0
     cooldown: 12
-    potion: SLOWNESS
-    amplifier: 2
+    potion-type: SLOWNESS
+    potion-amplifier: 2
     duration: 60
 
   BLIZZARD:

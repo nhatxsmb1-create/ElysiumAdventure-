@@ -10,21 +10,22 @@ public class BossData {
     private final double       maxHp;
     private final List<Phase>  phases;
     private final BossReward   reward;
+    private final String       lootConfig; // "DIAMOND:1-3:0.5,GOLD_INGOT:2-5:0.8"
 
     public BossData(String id, String displayName, String mythicMobId,
-                    double maxHp, List<Phase> phases, BossReward reward) {
+                    double maxHp, List<Phase> phases, BossReward reward, String lootConfig) {
         this.id          = id;
         this.displayName = displayName;
         this.mythicMobId = mythicMobId;
         this.maxHp       = maxHp;
         this.phases      = phases;
         this.reward      = reward;
+        this.lootConfig  = lootConfig;
     }
 
-    /** Tra ve Phase tuong ung voi phan tram HP hien tai */
     public Phase getPhaseForHp(double currentHp) {
-        double pct = (currentHp / maxHp) * 100.0;
-        Phase result = phases.get(0);
+        double pct    = (currentHp / maxHp) * 100.0;
+        Phase  result = phases.get(0);
         for (Phase p : phases) {
             if (pct <= p.getThreshold()) result = p;
         }
@@ -37,15 +38,16 @@ public class BossData {
     public double      getMaxHp()       { return maxHp; }
     public List<Phase> getPhases()      { return phases; }
     public BossReward  getReward()      { return reward; }
+    public String      getLootConfig()  { return lootConfig; }
 
-    // ── Inner: Phase ──────────────────────────────────────────────────────────
+    // ── Phase ─────────────────────────────────────────────────────────────────
 
     public static class Phase {
-        private final int          threshold;   // % HP
+        private final int          threshold;
         private final String       name;
         private final List<String> skills;
         private final double       speed;
-        private final String       announce;    // null = khong thong bao
+        private final String       announce;
 
         public Phase(int threshold, String name, List<String> skills, double speed, String announce) {
             this.threshold = threshold;
@@ -62,7 +64,7 @@ public class BossData {
         public String       getAnnounce()  { return announce; }
     }
 
-    // ── Inner: Reward ─────────────────────────────────────────────────────────
+    // ── Reward ────────────────────────────────────────────────────────────────
 
     public static class BossReward {
         private final int          exp;

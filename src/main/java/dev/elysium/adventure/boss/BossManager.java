@@ -3,14 +3,16 @@ package dev.elysium.adventure.boss;
 import dev.elysium.adventure.ElysiumAdventure;
 import dev.elysium.adventure.event.BossDeathEvent;
 import dev.elysium.adventure.event.BossPhaseChangeEvent;
+import dev.elysium.adventure.loot.LootTable;
+import dev.elysium.adventure.util.AnnounceUtil;
 import io.lumine.mythic.bukkit.MythicBukkit;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Particle;
+import org.bukkit.*;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -22,12 +24,12 @@ public class BossManager {
     private final ElysiumAdventure plugin;
     private final BossSkillExecutor executor;
 
-    // Dinh nghia boss tu config
-    private final Map<String, BossData>     bossDataMap  = new HashMap<>();
+    private final Map<String, BossData>      bossDataMap  = new HashMap<>();
     private final Map<String, BossSkillData> skillDataMap = new HashMap<>();
+    private final Map<UUID, ActiveBoss>      activeBosses = new HashMap<>();
 
-    // Boss dang song: entity UUID -> ActiveBoss
-    private final Map<UUID, ActiveBoss> activeBosses = new HashMap<>();
+    // BossBar: entity UUID -> BossBar
+    private final Map<UUID, BossBar> bossBars = new HashMap<>();
 
     private BukkitTask aiTask;
 
@@ -38,13 +40,13 @@ public class BossManager {
         startAiTick();
     }
 
-    // ── Config Loading ────────────────────────────────────────────────────────
+    // ── Config ────────────────────────────────────────────────────────────────
 
     private void loadConfig() {
         File f = new File(plugin.getDataFolder(), "bosses.yml");
         YamlConfiguration cfg = YamlConfiguration.loadConfiguration(f);
 
-        // Load skills truoc
+        // Load skills
         ConfigurationSection skillsSec = cfg.getConfigurationSection("skills");
         if (skillsSec != null) {
             for (String skillId : skillsSec.getKeys(false)) {
@@ -59,7 +61,7 @@ public class BossManager {
                 try { particle = Particle.valueOf(s.getString("particle", "FLAME")); }
                 catch (IllegalArgumentException e) { particle = Particle.FLAME; }
 
-                BossSkillData skill = new BossSkillData.Builder(skillId, s.getString("name", skillId), type)
+                skillDataMap.put(skillId, new BossSkillData.Builder(skillId, s.getString("name", skillId), type)
                         .cooldown(s.getInt("cooldown", 10))
                         .damage(s.getDouble("damage", 5))
                         .range(s.getDouble("radius", s.getDouble("range", 5)))
@@ -72,9 +74,7 @@ public class BossManager {
                         .duration(s.getInt("duration", 60))
                         .meteor(s.getInt("count", 4), s.getDouble("radius", 8))
                         .particle(particle)
-                        .build();
-
-                skillDataMap.put(skillId, skill);
+                        .build());
             }
         }
 
@@ -88,7 +88,6 @@ public class BossManager {
                 List<BossData.Phase> phases = new ArrayList<>();
                 List<Map<?, ?>> phaseList = b.getMapList("phases");
                 for (Map<?, ?> rawMap : phaseList) {
-                    // Cast sang Map<String, Object> de tranh generic capture error
                     @SuppressWarnings("unchecked")
                     Map<String, Object> pm = (Map<String, Object>) rawMap;
 
@@ -104,15 +103,16 @@ public class BossManager {
 
                     phases.add(new BossData.Phase(threshold, name, skills, speed, announce));
                 }
-                // Sort giam dan theo threshold
                 phases.sort((a, bb) -> bb.getThreshold() - a.getThreshold());
 
                 ConfigurationSection rSec = b.getConfigurationSection("rewards");
                 BossData.BossReward reward = new BossData.BossReward(
                         rSec != null ? rSec.getInt("exp", 0)   : 0,
                         rSec != null ? rSec.getInt("money", 0) : 0,
-                        rSec != null ? rSec.getStringList("commands") : new java.util.ArrayList<>()
+                        rSec != null ? rSec.getStringList("commands") : new ArrayList<>()
                 );
+
+                String lootConfig = b.getString("loot", "");
 
                 bossDataMap.put(bossId, new BossData(
                         bossId,
@@ -120,79 +120,95 @@ public class BossManager {
                         b.getString("mythicmob-id", ""),
                         b.getDouble("max-hp", 1000),
                         phases,
-                        reward
+                        reward,
+                        lootConfig
                 ));
             }
         }
-
-        plugin.getLogger().info("Loaded " + bossDataMap.size() + " boss(es), "
-                + skillDataMap.size() + " skill(s).");
+        plugin.getLogger().info("Loaded " + bossDataMap.size() + " boss(es), " + skillDataMap.size() + " skill(s).");
     }
 
     // ── Spawn ─────────────────────────────────────────────────────────────────
 
     public ActiveBoss spawnBoss(String bossId, Location loc) {
         BossData data = bossDataMap.get(bossId);
-        if (data == null) {
-            plugin.getLogger().warning("Boss khong ton tai: " + bossId);
-            return null;
-        }
+        if (data == null) { plugin.getLogger().warning("Boss khong ton tai: " + bossId); return null; }
 
         LivingEntity entity;
-        if (Bukkit.getPluginManager().isPluginEnabled("MythicMobs")
-                && !data.getMythicMobId().isEmpty()) {
-            // Dung MythicMobs chi de spawn entity
+        if (Bukkit.getPluginManager().isPluginEnabled("MythicMobs") && !data.getMythicMobId().isEmpty()) {
             try {
+                io.lumine.mythic.api.adapters.AbstractLocation abstractLoc =
+                        io.lumine.mythic.bukkit.BukkitAdapter.adapt(loc);
                 var mythicMob = MythicBukkit.inst().getMobManager()
-                        .spawnMob(data.getMythicMobId(), loc, 1);
+                        .spawnMob(data.getMythicMobId(), abstractLoc, 1);
                 entity = (LivingEntity) mythicMob.getEntity().getBukkitEntity();
             } catch (Exception e) {
-                plugin.getLogger().warning("Khong spawn duoc MythicMob: " + data.getMythicMobId()
-                        + " — spawn Wither Skeleton thay the.");
-                entity = (LivingEntity) loc.getWorld().spawnEntity(loc,
-                        org.bukkit.entity.EntityType.WITHER_SKELETON);
+                entity = (LivingEntity) loc.getWorld().spawnEntity(loc, EntityType.WITHER_SKELETON);
             }
         } else {
-            // Fallback: spawn Wither Skeleton
-            entity = (LivingEntity) loc.getWorld().spawnEntity(loc,
-                    org.bukkit.entity.EntityType.WITHER_SKELETON);
+            entity = (LivingEntity) loc.getWorld().spawnEntity(loc, EntityType.WITHER_SKELETON);
         }
 
         entity.setCustomName(color(data.getDisplayName()));
-        entity.setCustomNameVisible(true);
+        entity.setCustomNameVisible(false); // Dung BossBar thay the
         entity.setRemoveWhenFarAway(false);
 
         ActiveBoss active = new ActiveBoss(data, entity);
         activeBosses.put(entity.getUniqueId(), active);
 
-        // Thong bao toan server
-        Bukkit.broadcastMessage(color("&5&l[Boss] &r" + data.getDisplayName()
-                + " &fxuat hien tai &e" + formatLoc(loc) + "!"));
+        // Tao BossBar
+        BossBar bar = Bukkit.createBossBar(
+                color(data.getDisplayName()),
+                BarColor.RED,
+                BarStyle.SEGMENTED_10
+        );
+        bar.setProgress(1.0);
+        bossBars.put(entity.getUniqueId(), bar);
+
+        // Announce
+        AnnounceUtil.broadcast(data.getDisplayName() + " &fxuat hien!");
         return active;
     }
 
-    // ── Damage Handling ───────────────────────────────────────────────────────
+    // ── Damage ────────────────────────────────────────────────────────────────
 
-    /** Goi tu BossListener khi entity bi tan cong */
     public void handleDamage(UUID entityUuid, double damage, UUID damagerUuid) {
         ActiveBoss boss = activeBosses.get(entityUuid);
         if (boss == null) return;
 
         boolean dead = boss.damage(damage, damagerUuid);
 
-        // Kiem tra phase change
+        // Update BossBar
+        BossBar bar = bossBars.get(entityUuid);
+        if (bar != null) bar.setProgress(Math.max(0, boss.getHpPercent() / 100.0));
+
+        // Phase change
         BossData.Phase newPhase = boss.checkPhaseChange();
         if (newPhase != null) {
-            BossPhaseChangeEvent event = new BossPhaseChangeEvent(boss, newPhase);
-            Bukkit.getPluginManager().callEvent(event);
-            if (newPhase.getAnnounce() != null) {
-                Bukkit.broadcastMessage(color(newPhase.getAnnounce()));
+            Bukkit.getPluginManager().callEvent(new BossPhaseChangeEvent(boss, newPhase));
+
+            // Update BossBar color theo phase
+            if (bar != null) {
+                double pct = boss.getHpPercent();
+                bar.setColor(pct > 60 ? BarColor.GREEN : pct > 30 ? BarColor.YELLOW : BarColor.RED);
             }
-            // Ap dung speed moi
+
+            // Apply speed
             try {
                 boss.getEntity().getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED)
                         .setBaseValue(newPhase.getSpeed());
             } catch (Exception ignored) {}
+
+            // Announce phase change den player trong range
+            List<Player> nearby = getNearbyPlayers(boss.getEntity().getLocation(), 100);
+            AnnounceUtil.bossPhaseChange(nearby,
+                    boss.getData().getDisplayName(), newPhase.getName(), newPhase.getAnnounce());
+        }
+
+        // Add player vao BossBar
+        Player damager = Bukkit.getPlayer(damagerUuid);
+        if (damager != null && bar != null && !bar.getPlayers().contains(damager)) {
+            bar.addPlayer(damager);
         }
 
         if (dead) handleDeath(boss);
@@ -200,39 +216,36 @@ public class BossManager {
 
     private void handleDeath(ActiveBoss boss) {
         activeBosses.remove(boss.getEntity().getUniqueId());
+
+        // Xoa BossBar
+        BossBar bar = bossBars.remove(boss.getEntity().getUniqueId());
+        if (bar != null) { bar.removeAll(); bar.setVisible(false); }
+
         boss.getEntity().remove();
 
-        // Fire custom event
-        BossDeathEvent event = new BossDeathEvent(boss);
-        Bukkit.getPluginManager().callEvent(event);
+        Bukkit.getPluginManager().callEvent(new BossDeathEvent(boss));
 
-        // Phat thuong cho tat ca player da gay damage
-        BossData.BossReward reward = boss.getData().getReward();
+        // Drop loot tai vi tri boss
+        LootTable loot = LootTable.fromString(boss.getData().getLootConfig());
+        loot.dropAt(boss.getEntity().getLocation());
+
+        // Phan thuong
         for (UUID uuid : boss.getDamagers()) {
             Player p = Bukkit.getPlayer(uuid);
             if (p == null) continue;
-            giveReward(p, reward);
+            giveReward(p, boss.getData().getReward());
         }
 
-        Bukkit.broadcastMessage(color("&5&l[Boss] &r" + boss.getData().getDisplayName()
-                + " &fda bi tieu diet!"));
+        // Announce
+        AnnounceUtil.bossDeath(boss.getData().getDisplayName());
     }
 
     private void giveReward(Player player, BossData.BossReward reward) {
-        // Exp qua CoreAPI
-        try {
-            dev.elysium.core.api.CoreAPI.addExp(player, reward.getExp());
-        } catch (Exception ignored) {}
-
-        // Money qua CoreAPI (Vault first, fallback internal)
+        try { dev.elysium.core.api.CoreAPI.addExp(player, reward.getExp()); } catch (Exception ignored) {}
         dev.elysium.core.api.CoreAPI.addBalance(player, reward.getMoney());
-
-        // Commands
         for (String cmd : reward.getCommands()) {
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
-                    cmd.replace("%player%", player.getName()));
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd.replace("%player%", player.getName()));
         }
-
         player.sendMessage(color("&5[Boss] &aNhan thuong: &e+" + reward.getExp()
                 + " EXP &f| &a+" + reward.getMoney() + " coin"));
     }
@@ -244,50 +257,49 @@ public class BossManager {
             @Override
             public void run() {
                 for (ActiveBoss boss : new ArrayList<>(activeBosses.values())) {
-                    if (!boss.isAlive()) {
-                        activeBosses.remove(boss.getEntity().getUniqueId());
-                        continue;
-                    }
+                    if (!boss.isAlive()) { activeBosses.remove(boss.getEntity().getUniqueId()); continue; }
                     tickBossAi(boss);
                 }
             }
-        }.runTaskTimer(plugin, 20L, 20L); // moi 1 giay
+        }.runTaskTimer(plugin, 20L, 20L);
     }
 
     private void tickBossAi(ActiveBoss boss) {
         BossData.Phase phase = boss.getCurrentPhase();
-
-        // Thu tu cac skill trong phase, dung cai dau tien het cooldown
         for (String skillId : phase.getSkills()) {
             BossSkillData skill = skillDataMap.get(skillId);
             if (skill == null) continue;
             if (boss.isSkillReady(skillId, skill.getCooldown())) {
                 executor.execute(boss, skill);
                 boss.markSkillUsed(skillId);
-                break; // Chi dung 1 skill moi tick
+                break;
             }
         }
 
-        // Update HP display tren custom name
-        double pct = boss.getHpPercent();
-        String bar = buildHpBar(pct);
-        boss.getEntity().setCustomName(color(boss.getData().getDisplayName()
-                + "\n" + bar + " &f" + String.format("%.0f", boss.getCurrentHp())
-                + "/" + (int) boss.getData().getMaxHp()));
+        // Update BossBar title voi HP
+        BossBar bar = bossBars.get(boss.getEntity().getUniqueId());
+        if (bar != null) {
+            bar.setTitle(color(boss.getData().getDisplayName()
+                    + " &f| " + String.format("%.0f", boss.getCurrentHp())
+                    + "/" + (int) boss.getData().getMaxHp()
+                    + " &7[" + boss.getCurrentPhase().getName() + "]"));
+        }
     }
 
     // ── Utils ─────────────────────────────────────────────────────────────────
 
-    private String buildHpBar(double pct) {
-        int filled = (int) (pct / 10);
-        StringBuilder bar = new StringBuilder("&c[");
-        for (int i = 0; i < 10; i++) bar.append(i < filled ? "❤" : "&8❤&c");
-        bar.append("]");
-        return bar.toString();
+    private List<Player> getNearbyPlayers(Location loc, double range) {
+        List<Player> list = new ArrayList<>();
+        for (Entity e : loc.getWorld().getNearbyEntities(loc, range, range, range)) {
+            if (e instanceof Player p) list.add(p);
+        }
+        return list;
     }
 
     public void shutdown() {
         if (aiTask != null) aiTask.cancel();
+        for (BossBar bar : bossBars.values()) { bar.removeAll(); bar.setVisible(false); }
+        bossBars.clear();
         for (ActiveBoss boss : activeBosses.values()) boss.getEntity().remove();
         activeBosses.clear();
     }
@@ -298,7 +310,4 @@ public class BossManager {
     public Set<String> getBossIds()                  { return bossDataMap.keySet(); }
 
     private String color(String s) { return s.replace("&", "\u00a7"); }
-    private String formatLoc(Location l) {
-        return String.format("%.0f, %.0f, %.0f", l.getX(), l.getY(), l.getZ());
-    }
-    }
+}
