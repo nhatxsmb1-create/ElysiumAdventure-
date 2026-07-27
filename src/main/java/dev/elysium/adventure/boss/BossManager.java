@@ -294,4 +294,4 @@ public class BossManager {
     private String formatLoc(Location l) {
         return String.format("%.0f, %.0f, %.0f", l.getX(), l.getY(), l.getZ());
     }
-        }
+}
