@@ -11,9 +11,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class PartyGui extends ElysiumGui {
 
@@ -29,18 +28,66 @@ public class PartyGui extends ElysiumGui {
         fill(ItemBuilder.filler());
 
         Party party = plugin.getPartyManager().getParty(viewer);
-        boolean isLeader = party != null && party.isLeader(viewer.getUniqueId());
 
         if (party == null) {
-            // Khong trong party
-            fill(22, new ItemBuilder(Material.BARRIER)
-                    .name("&cBan chua trong party nao!")
-                    .lore("&7Hay duoc moi hoac moi nguoi khac")
-                    .build());
-            return;
+            buildNoParty(viewer);
+        } else {
+            buildParty(viewer, party);
         }
+    }
 
-        // Hien thi thanh vien (slot 10-16, 19-25)
+    // ── Chua co party ────────────────────────────────────────────────────────
+
+    private void buildNoParty(Player viewer) {
+        // Center thong bao
+        fill(22, new ItemBuilder(Material.GRAY_DYE)
+                .name("&cBan chua trong party nao!")
+                .lore("&7Tao party hoac cho nguoi khac moi ban")
+                .build());
+
+        // Nut Tao Party (slot 20)
+        setButton(20, new GuiButton(
+                new ItemBuilder(Material.LIME_DYE)
+                        .name("&a&lTao Party Moi")
+                        .lore("", "&7Click de tao party moi", "&7Sau do moi nguoi choi cung vao dungeon!")
+                        .glow()
+                        .build(),
+                e -> {
+                    e.setCancelled(true);
+                    plugin.getPartyManager().createParty(viewer);
+                    viewer.sendMessage(color("&aTao party thanh cong! Dung &e/party invite <ten> &ede moi."));
+                    // Refresh GUI
+                    PartyGui newGui = new PartyGui(plugin);
+                    GuiListener.register(viewer.getUniqueId(), newGui);
+                    newGui.open(viewer);
+                }
+        ));
+
+        // Nut Huong dan (slot 24)
+        fill(24, new ItemBuilder(Material.BOOK)
+                .name("&eHuong Dan")
+                .lore(
+                    "",
+                    "&7/party create &f- Tao party",
+                    "&7/party invite <ten> &f- Moi nguoi",
+                    "&7/party accept &f- Chap nhan loi moi",
+                    "&7/party leave &f- Roi party"
+                )
+                .build());
+
+        // Nut dong
+        setButton(49, new GuiButton(
+                new ItemBuilder(Material.BARRIER).name("&cDong").build(),
+                e -> { e.setCancelled(true); viewer.closeInventory(); }
+        ));
+    }
+
+    // ── Da co party ──────────────────────────────────────────────────────────
+
+    private void buildParty(Player viewer, Party party) {
+        boolean isLeader = party.isLeader(viewer.getUniqueId());
+
+        // Hien thi thanh vien o hang dau (slot 10-16)
         int[] memberSlots = {10, 11, 12, 13, 14, 15, 16};
         List<UUID> members = new ArrayList<>(party.getMembers());
 
@@ -48,41 +95,63 @@ public class PartyGui extends ElysiumGui {
             UUID   uuid   = members.get(i);
             Player member = Bukkit.getPlayer(uuid);
             String name   = member != null ? member.getName() : "Offline";
-            boolean isThisLeader = party.isLeader(uuid);
+            boolean thisIsLeader = party.isLeader(uuid);
 
-            // Skull cua player
             ItemStack skull = new ItemStack(Material.PLAYER_HEAD);
             SkullMeta sm    = (SkullMeta) skull.getItemMeta();
             if (member != null) sm.setOwningPlayer(member);
-            sm.setDisplayName(color(isThisLeader ? "&e&l👑 " + name : "&f" + name));
+            sm.setDisplayName(color(thisIsLeader ? "&e&l👑 " + name : "&f" + name));
 
             List<String> lore = new ArrayList<>();
-            lore.add(isThisLeader ? "&eParty Leader" : "&7Thanh vien");
+            lore.add(color(thisIsLeader ? "&eParty Leader" : "&7Thanh vien"));
             lore.add("");
             if (isLeader && !uuid.equals(viewer.getUniqueId())) {
-                lore.add("&cClick de kick");
+                lore.add(color("&cClick de kick"));
             }
-            sm.setLore(lore.stream().map(this::color).collect(java.util.stream.Collectors.toList()));
+            sm.setLore(lore);
             skull.setItemMeta(sm);
 
             final UUID targetUuid = uuid;
             setButton(memberSlots[i], new GuiButton(skull, e -> {
                 e.setCancelled(true);
-                if (!isLeader) return;
-                if (targetUuid.equals(viewer.getUniqueId())) return;
+                if (!isLeader || targetUuid.equals(viewer.getUniqueId())) return;
                 Player target = Bukkit.getPlayer(targetUuid);
                 if (target != null) {
                     plugin.getPartyManager().kickMember(viewer, target);
-                    // Refresh GUI
-                    new PartyGui(plugin).open(viewer);
+                    PartyGui newGui = new PartyGui(plugin);
+                    GuiListener.register(viewer.getUniqueId(), newGui);
+                    newGui.open(viewer);
                 }
             }));
         }
 
+        // Slot trong con lai trong hang member
+        for (int i = members.size(); i < memberSlots.length; i++) {
+            fill(memberSlots[i], new ItemBuilder(Material.LIGHT_GRAY_STAINED_GLASS_PANE)
+                    .name("&7[Trong]")
+                    .lore("&7Cho thanh vien...")
+                    .build());
+        }
+
+        // Party info (slot 31)
+        String leaderName = Bukkit.getPlayer(party.getLeader()) != null
+                ? Bukkit.getPlayer(party.getLeader()).getName() : "Unknown";
+        fill(31, new ItemBuilder(Material.NETHER_STAR)
+                .name("&5&lParty Info")
+                .lore(
+                    "",
+                    "&7Thanh vien: &f" + party.getSize() + "/" + plugin.getAdventureConfig().getPartyMaxSize(),
+                    "&7Leader: &e" + leaderName,
+                    ""
+                )
+                .build());
+
         // Nut Roi party (slot 45)
         setButton(45, new GuiButton(
-                new ItemBuilder(Material.RED_BED).name("&cRoi Party")
-                        .lore("&7Click de roi party").build(),
+                new ItemBuilder(Material.RED_BED)
+                        .name("&c&lRoi Party")
+                        .lore("", "&7Click de roi party")
+                        .build(),
                 e -> {
                     e.setCancelled(true);
                     viewer.closeInventory();
@@ -90,11 +159,20 @@ public class PartyGui extends ElysiumGui {
                 }
         ));
 
-        // Nut Giai tan (slot 53, chi leader)
+        // Nut Moi nguoi (slot 47, chi leader)
         if (isLeader) {
+            fill(47, new ItemBuilder(Material.EMERALD)
+                    .name("&a&lMoi Nguoi Choi")
+                    .lore("", "&7Dung lenh: &e/party invite <ten>")
+                    .build());
+
+            // Nut Giai tan (slot 53)
             setButton(53, new GuiButton(
-                    new ItemBuilder(Material.TNT).name("&4Giai Tan Party")
-                            .lore("&7Click de giai tan party").glow().build(),
+                    new ItemBuilder(Material.TNT)
+                            .name("&4&lGiai Tan Party")
+                            .lore("", "&cClick de giai tan party!")
+                            .glow()
+                            .build(),
                     e -> {
                         e.setCancelled(true);
                         viewer.closeInventory();
@@ -103,14 +181,11 @@ public class PartyGui extends ElysiumGui {
             ));
         }
 
-        // Info party (slot 49)
-        fill(49, new ItemBuilder(Material.NETHER_STAR)
-                .name("&5Party Info")
-                .lore(
-                    "&7Thanh vien: &f" + party.getSize() + "/" + plugin.getAdventureConfig().getPartyMaxSize(),
-                    "&7Truong party: &e" + (Bukkit.getPlayer(party.getLeader()) != null
-                            ? Bukkit.getPlayer(party.getLeader()).getName() : "Unknown")
-                ).build());
+        // Nut dong (slot 49)
+        setButton(49, new GuiButton(
+                new ItemBuilder(Material.BARRIER).name("&cDong").build(),
+                e -> { e.setCancelled(true); viewer.closeInventory(); }
+        ));
     }
 
     private String color(String s) { return s.replace("&", "\u00a7"); }
