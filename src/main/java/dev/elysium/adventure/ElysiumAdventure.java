@@ -13,6 +13,7 @@ import dev.elysium.adventure.listener.BossListener;
 import dev.elysium.adventure.listener.DungeonListener;
 import dev.elysium.adventure.listener.PartyListener;
 import dev.elysium.adventure.party.PartyManager;
+import dev.elysium.adventure.wave.WaveManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class ElysiumAdventure extends JavaPlugin {
@@ -23,6 +24,7 @@ public class ElysiumAdventure extends JavaPlugin {
     private PartyManager    partyManager;
     private BossManager     bossManager;
     private DungeonManager  dungeonManager;
+    private WaveManager     waveManager;
 
     @Override
     public void onEnable() {
@@ -36,8 +38,11 @@ public class ElysiumAdventure extends JavaPlugin {
         partyManager    = new PartyManager(this);
         bossManager     = new BossManager(this);
         dungeonManager  = new DungeonManager(this);
+        waveManager     = new WaveManager(this);
 
         AdventureAPI.init(this);
+
+        getCommand("wavedungeon").setExecutor(new dev.elysium.adventure.command.WaveDungeonCommand(this));
 
         // Commands
         getCommand("adventure").setExecutor(new AdventureCommand(this));
@@ -50,6 +55,7 @@ public class ElysiumAdventure extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new BossListener(this), this);
         getServer().getPluginManager().registerEvents(new DungeonListener(this), this);
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
+        getServer().getPluginManager().registerEvents(new dev.elysium.adventure.listener.WaveListener(this), this);
 
         getLogger().info("=== ElysiumAdventure v" + getDescription().getVersion() + " enabled! ===");
         getLogger().info("Bosses: " + bossManager.getBossCount()
@@ -59,6 +65,7 @@ public class ElysiumAdventure extends JavaPlugin {
     @Override
     public void onDisable() {
         if (dungeonManager != null) dungeonManager.shutdown();
+        if (waveManager    != null) waveManager.shutdown();
         if (bossManager    != null) bossManager.shutdown();
         getLogger().info("ElysiumAdventure disabled.");
     }
@@ -68,4 +75,5 @@ public class ElysiumAdventure extends JavaPlugin {
     public PartyManager    getPartyManager()     { return partyManager; }
     public BossManager     getBossManager()      { return bossManager; }
     public DungeonManager  getDungeonManager()   { return dungeonManager; }
+    public WaveManager     getWaveManager()      { return waveManager; }
 }

@@ -1,0 +1,81 @@
+# Wave Dungeon Config
+# Moi difficulty co so wave va chi so khac nhau
+# mythicmob-id: ten mob trong MythicMobs
+# level: level mob (MythicMobs ho tro)
+# count: so luong mob spawn
+
+wave-dungeons:
+  ANCIENT_RUINS:
+    display-name: "&6&lPhế Tích Cổ Đại"
+    description: "Vuot qua cac dot tan cong cua ke thu!"
+    world-template: "dungeon_ruins"
+    min-players: 1
+    max-players: 6
+    spawn:
+      x: 0.5
+      y: 65.0
+      z: 0.5
+      yaw: 0
+    mob-spawn:         # Vi tri spawn mob (co the nhieu vi tri)
+      - {x: 10, y: 65, z: 20}
+      - {x: -10, y: 65, z: 20}
+      - {x: 0, y: 65, z: 30}
+
+    difficulties:
+      NORMAL:
+        wave-count: 5
+        wave-delay: 10        # Giay dem nguoc giua cac wave
+        rewards:
+          exp: 1000
+          money: 2000
+          commands: []
+        waves:
+          1:  [{mob: "RuinsSkeleton", level: 1, count: 5}]
+          2:  [{mob: "RuinsSkeleton", level: 1, count: 5}, {mob: "RuinsZombie", level: 1, count: 3}]
+          3:  [{mob: "RuinsZombie", level: 2, count: 8}]
+          4:  [{mob: "RuinsArcher", level: 2, count: 5}, {mob: "RuinsZombie", level: 2, count: 5}]
+          5:  [{mob: "RuinsBoss", level: 3, count: 1}]   # Wave cuoi co boss
+
+      HARD:
+        wave-count: 10
+        wave-delay: 8
+        rewards:
+          exp: 3000
+          money: 6000
+          commands: []
+        waves:
+          1:  [{mob: "RuinsSkeleton", level: 3, count: 8}]
+          2:  [{mob: "RuinsSkeleton", level: 3, count: 8}, {mob: "RuinsZombie", level: 3, count: 5}]
+          3:  [{mob: "RuinsZombie", level: 4, count: 10}]
+          4:  [{mob: "RuinsArcher", level: 4, count: 6}, {mob: "RuinsZombie", level: 4, count: 6}]
+          5:  [{mob: "RuinsZombie", level: 5, count: 12}]
+          6:  [{mob: "RuinsArcher", level: 5, count: 8}, {mob: "RuinsSkeleton", level: 5, count: 8}]
+          7:  [{mob: "RuinsElite", level: 5, count: 3}]
+          8:  [{mob: "RuinsElite", level: 6, count: 4}, {mob: "RuinsArcher", level: 6, count: 6}]
+          9:  [{mob: "RuinsElite", level: 6, count: 5}, {mob: "RuinsZombie", level: 6, count: 10}]
+          10: [{mob: "RuinsBoss", level: 7, count: 1}]
+
+      NIGHTMARE:
+        wave-count: 15
+        wave-delay: 5
+        rewards:
+          exp: 8000
+          money: 15000
+          commands:
+            - "give %player% netherite_ingot 2"
+        waves:
+          1:  [{mob: "RuinsSkeleton", level: 8, count: 10}]
+          2:  [{mob: "RuinsSkeleton", level: 8, count: 10}, {mob: "RuinsZombie", level: 8, count: 8}]
+          3:  [{mob: "RuinsZombie", level: 9, count: 15}]
+          4:  [{mob: "RuinsArcher", level: 9, count: 8}, {mob: "RuinsZombie", level: 9, count: 10}]
+          5:  [{mob: "RuinsElite", level: 9, count: 5}]
+          6:  [{mob: "RuinsElite", level: 10, count: 6}, {mob: "RuinsArcher", level: 10, count: 8}]
+          7:  [{mob: "RuinsElite", level: 10, count: 8}, {mob: "RuinsSkeleton", level: 10, count: 10}]
+          8:  [{mob: "RuinsElite", level: 11, count: 8}, {mob: "RuinsZombie", level: 11, count: 12}]
+          9:  [{mob: "RuinsBoss", level: 11, count: 1}, {mob: "RuinsElite", level: 11, count: 4}]
+          10: [{mob: "RuinsElite", level: 12, count: 10}, {mob: "RuinsArcher", level: 12, count: 10}]
+          11: [{mob: "RuinsElite", level: 12, count: 12}, {mob: "RuinsZombie", level: 12, count: 15}]
+          12: [{mob: "RuinsBoss", level: 13, count: 1}, {mob: "RuinsElite", level: 13, count: 6}]
+          13: [{mob: "RuinsElite", level: 14, count: 15}, {mob: "RuinsArcher", level: 14, count: 10}]
+          14: [{mob: "RuinsBoss", level: 14, count: 2}, {mob: "RuinsElite", level: 14, count: 8}]
+          15: [{mob: "RuinsBoss", level: 15, count: 1}, {mob: "RuinsElite", level: 15, count: 10}, {mob: "RuinsArcher", level: 15, count: 10}]

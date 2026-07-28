@@ -12,6 +12,11 @@ softdepend:
   - MythicMobs
 
 commands:
+  wavedungeon:
+    description: Wave Dungeon system
+    aliases: [wd]
+    usage: /wd <menu|enter|leave|list>
+    permission: elysium.adventure.use
   adventure:
     description: ElysiumAdventure main command
     aliases: [adv]
