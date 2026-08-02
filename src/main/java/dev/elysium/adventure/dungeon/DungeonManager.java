@@ -166,6 +166,9 @@ public class DungeonManager {
                 int bonusExp = score * 10;
                 try { dev.elysium.core.api.CoreAPI.addExp(p, bonusExp); } catch (Exception ignored) {}
                 p.sendMessage(color("&5[Score] &fDiem: &e" + score + " &7| Bonus EXP: &a+" + bonusExp));
+
+                // Hook Weapon EXP - Dungeon clear (x1.0)
+                giveWeaponExp(p, 200 + (score * 3L), "DUNGEON");
             }
             cooldowns.computeIfAbsent(uuid, k -> new HashMap<>())
                     .put(dungeon.getData().getId(),
@@ -178,6 +181,22 @@ public class DungeonManager {
 
         destroyInstanceWorld(dungeon);
         activeDungeons.remove(dungeon.getId());
+    }
+
+    /** Hook Weapon EXP qua reflection - khong phu thuoc cung */
+    private void giveWeaponExp(org.bukkit.entity.Player player, long amount, String source) {
+        try {
+            Class<?> api = Class.forName("dev.elysium.weapon.api.WeaponAPI");
+            String weaponId = (String) api.getMethod("getHeldWeaponId", org.bukkit.entity.Player.class)
+                    .invoke(null, player);
+            if (weaponId != null) {
+                api.getMethod("addWeaponExp", org.bukkit.entity.Player.class, String.class, long.class, String.class)
+                        .invoke(null, player, weaponId, amount, source);
+            }
+        } catch (ClassNotFoundException ignored) {
+        } catch (Exception e) {
+            plugin.getLogger().warning("[Adventure] WeaponEXP error: " + e.getMessage());
+        }
     }
 
     /** Score 0-100 — clear nhanh duoc diem cao */
