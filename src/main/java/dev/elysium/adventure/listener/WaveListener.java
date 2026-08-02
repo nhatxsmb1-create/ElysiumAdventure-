@@ -34,6 +34,20 @@ public class WaveListener implements Listener {
         plugin.getWaveManager().onMobDeath(entity.getUniqueId());
     }
 
+    private void giveWeaponCombatExp(org.bukkit.entity.Player player) {
+        try {
+            Class<?> api = Class.forName("dev.elysium.weapon.api.WeaponAPI");
+            String weaponId = (String) api.getMethod("getHeldWeaponId", org.bukkit.entity.Player.class)
+                    .invoke(null, player);
+            if (weaponId != null) {
+                // 5 EXP moi kill mob trong dungeon
+                api.getMethod("addWeaponExp", org.bukkit.entity.Player.class, String.class, long.class, String.class)
+                        .invoke(null, player, weaponId, 5L, "DUNGEON");
+            }
+        } catch (ClassNotFoundException ignored) {
+        } catch (Exception ignored) {}
+    }
+
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
