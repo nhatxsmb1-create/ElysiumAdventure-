@@ -34,7 +34,25 @@ public class BossListener implements Listener {
         event.setCancelled(true);
         if (damagerUuid != null && damage > 0) {
             plugin.getBossManager().handleDamage(entity.getUniqueId(), damage, damagerUuid);
+
+            // Combat EXP nho moi hit boss (x1.5 vi danh boss)
+            org.bukkit.entity.Player damager = org.bukkit.Bukkit.getPlayer(damagerUuid);
+            if (damager != null) giveWeaponCombatExp(damager, "BOSS");
         }
+    }
+
+    private void giveWeaponCombatExp(org.bukkit.entity.Player player, String source) {
+        try {
+            Class<?> api = Class.forName("dev.elysium.weapon.api.WeaponAPI");
+            String weaponId = (String) api.getMethod("getHeldWeaponId", org.bukkit.entity.Player.class)
+                    .invoke(null, player);
+            if (weaponId != null) {
+                // 2 EXP moi hit boss (x1.5 multiplier trong WeaponMastery)
+                api.getMethod("addWeaponExp", org.bukkit.entity.Player.class, String.class, long.class, String.class)
+                        .invoke(null, player, weaponId, 2L, source);
+            }
+        } catch (ClassNotFoundException ignored) {
+        } catch (Exception ignored) {}
     }
 
     /** Bo qua entity death event mac dinh voi boss (da xu ly trong handleDamage) */
