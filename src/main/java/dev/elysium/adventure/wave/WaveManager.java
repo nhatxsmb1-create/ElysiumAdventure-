@@ -347,7 +347,27 @@ public class WaveManager {
         for (String cmd : reward.getCommands()) {
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd.replace("%player%", player.getName()));
         }
+
+        // Hook Weapon EXP - Wave Dungeon (x1.0, nhieu wave hon nen it hon moi lan)
+        giveWeaponExp(player, 150L, "DUNGEON");
+
         player.sendMessage(color("&5[Reward] &e+" + reward.getExp() + " EXP &f| &a+" + reward.getMoney() + " coin"));
+    }
+
+    /** Hook Weapon EXP qua reflection */
+    private void giveWeaponExp(Player player, long amount, String source) {
+        try {
+            Class<?> api = Class.forName("dev.elysium.weapon.api.WeaponAPI");
+            String weaponId = (String) api.getMethod("getHeldWeaponId", org.bukkit.entity.Player.class)
+                    .invoke(null, player);
+            if (weaponId != null) {
+                api.getMethod("addWeaponExp", org.bukkit.entity.Player.class, String.class, long.class, String.class)
+                        .invoke(null, player, weaponId, amount, source);
+            }
+        } catch (ClassNotFoundException ignored) {
+        } catch (Exception e) {
+            plugin.getLogger().warning("[Adventure] WeaponEXP error: " + e.getMessage());
+        }
     }
 
     // ── Tick (dem nguoc giua cac wave) ────────────────────────────────────────
