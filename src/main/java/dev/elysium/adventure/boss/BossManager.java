@@ -246,6 +246,23 @@ public class BossManager {
         for (String cmd : reward.getCommands()) {
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd.replace("%player%", player.getName()));
         }
+
+        // Hook Weapon EXP - Boss cho nhieu EXP nhat (x1.5)
+        try {
+            Class<?> weaponAPI = Class.forName("dev.elysium.weapon.api.WeaponAPI");
+            String weaponId = (String) weaponAPI.getMethod("getHeldWeaponId", org.bukkit.entity.Player.class)
+                    .invoke(null, player);
+            if (weaponId != null) {
+                long weaponExp = Math.max(100, reward.getExp() / 5);
+                weaponAPI.getMethod("addWeaponExp", org.bukkit.entity.Player.class, String.class, long.class, String.class)
+                        .invoke(null, player, weaponId, weaponExp, "BOSS");
+            }
+        } catch (ClassNotFoundException ignored) {
+            // ElysiumWeapon chua duoc cai
+        } catch (Exception e) {
+            plugin.getLogger().warning("[Adventure] Weapon EXP hook error: " + e.getMessage());
+        }
+
         player.sendMessage(color("&5[Boss] &aNhan thuong: &e+" + reward.getExp()
                 + " EXP &f| &a+" + reward.getMoney() + " coin"));
     }
